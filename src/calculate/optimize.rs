@@ -55,4 +55,52 @@ impl<'a> Term<'a> {
             }
         }
     }
+
+    // binary will make sure the operand is equal or less than 2
+    pub fn binary(&'a self) -> Term<'a> {
+        match self {
+            Term::None => Term::None,
+            Term::Atom(atom) => Term::Atom(atom.clone()),
+            Term::Not(term) => {
+                if let Some(term) = term.as_term().remove_none() {
+                    Term::Not(Box::new(term))
+                } else {
+                    Term::None
+                }
+            }
+            Term::Union(unions) => {
+                assert!(unions.len() > 0);
+                if unions.len() == 1 {
+                    unions[0].as_term().binary()
+                } else {
+                    let mut binary_union: Vec<Box<dyn ITerm + 'a>> = vec![
+                        Box::new(unions[0].as_term().binary()),
+                        Box::new(unions[1].as_term().binary()),
+                    ];
+                    for rhs in unions.iter().skip(2) {
+                        let rhs = rhs.as_term().binary();
+                        binary_union = vec![Box::new(Term::Union(binary_union)), Box::new(rhs)];
+                    }
+                    Term::Union(binary_union)
+                }
+            }
+            Term::Intersect(intersects) => {
+                assert!(intersects.len() > 0);
+                if intersects.len() == 1 {
+                    intersects[0].as_term().binary()
+                } else {
+                    let mut binary_intersect: Vec<Box<dyn ITerm + 'a>> = vec![
+                        Box::new(intersects[0].as_term().binary()),
+                        Box::new(intersects[1].as_term().binary()),
+                    ];
+                    for rhs in intersects.iter().skip(2) {
+                        let rhs = rhs.as_term().binary();
+                        binary_intersect =
+                            vec![Box::new(Term::Union(binary_intersect)), Box::new(rhs)];
+                    }
+                    Term::Union(binary_intersect)
+                }
+            }
+        }
+    }
 }

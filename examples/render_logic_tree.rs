@@ -56,10 +56,14 @@ fn main() {
 
     let term = end_svc.dump_term();
     let term_without_none = term.remove_none().unwrap();
+    let term_binary = term.binary();
 
     let mut f = std::fs::File::create("logic_tree.dot").unwrap();
     dot::render(&term, &mut f).unwrap();
 
     let mut f = std::fs::File::create("logic_tree_remove_none.dot").unwrap();
     dot::render(&term_without_none, &mut f).unwrap();
+
+    let mut f = std::fs::File::create("logic_tree_binary.dot").unwrap();
+    dot::render(&term_binary, &mut f).unwrap();
 }
