@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use crate::calculate::{Atom, Term, DumpTerm};
+use crate::calculate::{Atom, Term, DumpTerm, ITerm};
 
 use std::{cell::RefCell, sync::Arc};
 
@@ -88,14 +88,15 @@ impl<'a> IProgram for Program<'a> {
 
 impl<'a> DumpTerm for Program<'a> {
     fn dump_term(&self) -> Term {
-        let mut term = Term::Atom(Arc::new(self.infra));
+        let infra = Term::Atom(Arc::new(self.infra));
+        let mut unions: Vec<Box<dyn ITerm + 'a>> = Vec::new();
+        unions.push(Box::new(infra));
         for (conn, svc) in self.depends.borrow().iter() {
-            let both_broke = Term::Union { lhs: Box::new(Term::Atom(Arc::new(*conn))), rhs: Box::new(svc.dump_term()) };
-
-            term = Term::Union { lhs: Box::new(term), rhs: Box::new(both_broke) };
+            unions.push(Box::new(Term::Atom(Arc::new(*conn))));
+            unions.push(Box::new(svc.dump_term()));
         }
 
-        term
+        Term::Union(unions)
     }
 }
 
@@ -179,21 +180,27 @@ impl<'a> DumpTerm for Group<'a> {
         // TODO: do some optimization here
         // e.g. if there are some isomorphic relationships between programs, we can calculate the 
         // probability in toltal
-        let mut term = Term::None;
+        let mut unions: Vec<Box<dyn ITerm + 'a>> = Vec::new();
 
         let total = self.programs.borrow().len();
         for fail_count in total - self.min_replica + 1..total {
             for combination in self.programs.borrow().iter().combinations(fail_count) {
-                let mut combination_term = Term::None;
+                let mut intersects: Vec<Box<dyn ITerm + 'a>> = Vec::new();
                 for program in combination {
-                    combination_term = Term::Intersect { lhs: Box::new(combination_term), rhs: Box::new(program.dump_term()) };
+                    intersects.push(Box::new(program.dump_term()));
                 }
     
-                term = Term::Union { lhs: Box::new(term), rhs: Box::new(combination_term) };
+                if intersects.len() != 0 {
+                    unions.push(Box::new(Term::Intersect(intersects)));
+                }
             }
         }
 
-        term
+        if unions.len() == 0 {
+            Term::None
+        } else {
+            Term::Union(unions)
+        }
     }
 }
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use super::Term;
+use super::{Term, ITerm};
 
 impl<'a> Term<'a> {
     pub fn remove_none(&'a self) -> Option<Term<'a>> {
@@ -22,32 +22,30 @@ impl<'a> Term<'a> {
             Term::Atom(atom) => {
                 Some(Term::Atom(atom.clone()))
             },
-            Term::Union { lhs, rhs } => {
-                let lhs = lhs.as_term().remove_none();
-                let rhs = rhs.as_term().remove_none();
-                if lhs.is_none() && rhs.is_some() {
-                    rhs
-                } else if rhs.is_none() && lhs.is_some() {
-                    lhs
+            Term::Union(unions) => {
+                let non_empty_unions: Vec<Box<dyn ITerm + 'a>> = unions
+                    .iter()
+                    .map(|item| item.as_term())
+                    .filter_map(|term| term.remove_none())
+                    .map(|item| -> Box<dyn ITerm + 'a> {Box::new(item)})
+                    .collect();
+                if non_empty_unions.len() == 0 {
+                    None
                 } else {
-                    Some(Term::Union { 
-                        lhs: Box::new(lhs.unwrap()), 
-                        rhs: Box::new(rhs.unwrap()),
-                    })
+                    Some(Term::Union(non_empty_unions))
                 }
             },
-            Term::Intersect { lhs, rhs } => {
-                let lhs = lhs.as_term().remove_none();
-                let rhs = rhs.as_term().remove_none();
-                if lhs.is_none() && rhs.is_some() {
-                    rhs
-                } else if rhs.is_none() && lhs.is_some() {
-                    lhs
+            Term::Intersect(intersects) => {
+                let non_empty_intersects: Vec<Box<dyn ITerm + 'a>> = intersects
+                    .iter()
+                    .map(|item| item.as_term())
+                    .filter_map(|term| term.remove_none())
+                    .map(|item| -> Box<dyn ITerm + 'a> {Box::new(item)})
+                    .collect();
+                if non_empty_intersects.len() == 0 {
+                    None
                 } else {
-                    Some(Term::Intersect { 
-                        lhs: Box::new(lhs.unwrap()), 
-                        rhs: Box::new(rhs.unwrap()),
-                    })
+                    Some(Term::Intersect(non_empty_intersects))
                 }
             },
         }

@@ -28,14 +28,8 @@ pub enum Term<'a> {
 
     // one atom could be shared by multiple transforming terms
     Atom(Arc<dyn Atom + 'a>),
-    Union {
-        lhs: Box<dyn ITerm + 'a>,
-        rhs: Box<dyn ITerm + 'a>,
-    },
-    Intersect {
-        lhs: Box<dyn ITerm + 'a>,
-        rhs: Box<dyn ITerm + 'a>,
-    },
+    Union(Vec<Box<dyn ITerm + 'a>>),
+    Intersect(Vec<Box<dyn ITerm + 'a>>),
 }
 
 impl<'a> Term<'a> {
