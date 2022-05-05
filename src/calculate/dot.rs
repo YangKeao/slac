@@ -50,10 +50,6 @@ impl<'a> Term<'a> {
                 content: "None".to_string(),
                 id: self as *const Term as usize,
             },
-            Term::Not(_) => TermNode {
-                content: "Not".to_string(),
-                id: self as *const Term as usize,
-            },
             Term::Atom(atom) => TermNode {
                 content: atom.name(),
                 id: self as *const Term as usize,
@@ -82,25 +78,15 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
             Term::Atom(_) => {
                 nodes.push(self.node());
             }
-            Term::Not(term) => {
-                nodes.push(self.node());
-                nodes.extend(term.as_term().nodes().into_owned());
-            }
             Term::Union(unions) => {
                 nodes.push(self.node());
-                for union in unions
-                    .iter()
-                    .map(|item| item.as_term().nodes().into_owned())
-                {
+                for union in unions.iter().map(|item| item.nodes().into_owned()) {
                     nodes.extend(union);
                 }
             }
             Term::Intersect(intersects) => {
                 nodes.push(self.node());
-                for intersect in intersects
-                    .iter()
-                    .map(|item| item.as_term().nodes().into_owned())
-                {
+                for intersect in intersects.iter().map(|item| item.nodes().into_owned()) {
                     nodes.extend(intersect);
                 }
             }
@@ -115,24 +101,15 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
         match self {
             Term::None => {}
             Term::Atom(_) => {}
-            Term::Not(term) => {
-                let from = self.node();
-
-                edges.push(TermEdge {
-                    source: from.clone(),
-                    target: term.as_term().node().clone(),
-                });
-                edges.extend(term.as_term().edges().into_owned());
-            }
             Term::Union(unions) => {
                 let from = self.node();
 
                 for union in unions.iter() {
                     edges.push(TermEdge {
                         source: from.clone(),
-                        target: union.as_term().node().clone(),
+                        target: union.node().clone(),
                     });
-                    edges.extend(union.as_term().edges().into_owned());
+                    edges.extend(union.edges().into_owned());
                 }
             }
             Term::Intersect(intersects) => {
@@ -141,9 +118,9 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
                 for intersect in intersects.iter() {
                     edges.push(TermEdge {
                         source: from.clone(),
-                        target: intersect.as_term().node().clone(),
+                        target: intersect.node().clone(),
                     });
-                    edges.extend(intersect.as_term().edges().into_owned());
+                    edges.extend(intersect.edges().into_owned());
                 }
             }
         }

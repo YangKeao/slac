@@ -20,7 +20,7 @@ pub trait Atom: Debug {
     fn name(&self) -> String;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Term<'a> {
     // none is a special case that represents the empty set
     // anything calculate with none results in itself
@@ -29,9 +29,8 @@ pub enum Term<'a> {
     // one atom could be shared by multiple transforming terms
     Atom(Arc<dyn Atom + 'a>),
 
-    Not(Box<dyn ITerm + 'a>),
-    Union(Vec<Box<dyn ITerm + 'a>>),
-    Intersect(Vec<Box<dyn ITerm + 'a>>),
+    Union(Vec<Box<Term<'a>>>),
+    Intersect(Vec<Box<Term<'a>>>),
 }
 
 impl<'a> Term<'a> {
@@ -40,16 +39,6 @@ impl<'a> Term<'a> {
             Term::None => true,
             _ => false,
         }
-    }
-}
-
-pub trait ITerm: Debug {
-    fn as_term(&self) -> &Term<'_>;
-}
-
-impl<'a> ITerm for Term<'a> {
-    fn as_term(&self) -> &Term<'a> {
-        self
     }
 }
 

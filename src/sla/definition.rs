@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use crate::calculate::{Atom, DumpTerm, ITerm, Term};
+use crate::calculate::{Atom, DumpTerm, Term};
 
 use std::{cell::RefCell, sync::Arc};
 
@@ -88,7 +88,7 @@ impl<'a> IProgram for Program<'a> {}
 impl<'a> DumpTerm for Program<'a> {
     fn dump_term(&self) -> Term {
         let infra = Term::Atom(Arc::new(self.infra));
-        let mut unions: Vec<Box<dyn ITerm + 'a>> = Vec::new();
+        let mut unions: Vec<Box<Term<'a>>> = Vec::new();
         unions.push(Box::new(infra));
         for (conn, svc) in self.depends.borrow().iter() {
             unions.push(Box::new(Term::Atom(Arc::new(*conn))));
@@ -173,12 +173,12 @@ impl<'a> DumpTerm for Group<'a> {
         // TODO: do some optimization here
         // e.g. if there are some isomorphic relationships between programs, we can calculate the
         // probability in toltal
-        let mut unions: Vec<Box<dyn ITerm + 'a>> = Vec::new();
+        let mut unions: Vec<Box<Term<'a>>> = Vec::new();
 
         let total = self.programs.borrow().len();
         for fail_count in total - self.min_replica + 1..total {
             for combination in self.programs.borrow().iter().combinations(fail_count) {
-                let mut intersects: Vec<Box<dyn ITerm + 'a>> = Vec::new();
+                let mut intersects: Vec<Box<Term<'a>>> = Vec::new();
                 for program in combination {
                     intersects.push(Box::new(program.dump_term()));
                 }
