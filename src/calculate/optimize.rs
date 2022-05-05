@@ -22,6 +22,13 @@ impl<'a> Term<'a> {
             Term::Atom(atom) => {
                 Some(Term::Atom(atom.clone()))
             },
+            Term::Not(term) => {
+                if let Some(term) = term.as_term().remove_none() {
+                    Some(Term::Not(Box::new(term)))
+                } else {
+                    None
+                }
+            }
             Term::Union(unions) => {
                 let non_empty_unions: Vec<Box<dyn ITerm + 'a>> = unions
                     .iter()

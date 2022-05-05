@@ -50,7 +50,13 @@ impl<'a> Term<'a> {
                     content: "None".to_string(),
                     id: self as *const Term as usize,
                 }
-            },
+            }
+            Term::Not(_) => {
+                TermNode {
+                    content: "Not".to_string(),
+                    id: self as *const Term as usize,
+                }
+            }
             Term::Atom(atom) => {
                 TermNode {
                     content: atom.name(),
@@ -85,6 +91,10 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
             Term::Atom(_) => {
                 nodes.push(self.node());
             },
+            Term::Not(term) => {
+                nodes.push(self.node());
+                nodes.extend(term.as_term().nodes().into_owned());
+            }
             Term::Union(unions) => {
                 nodes.push(self.node());
                 for union in unions
@@ -112,6 +122,15 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
         match self {
             Term::None => {},
             Term::Atom(_) => {},
+            Term::Not(term) => {
+                let from = self.node();
+
+                edges.push(TermEdge {
+                    source: from.clone(),
+                    target: term.as_term().node().clone(),
+                });
+                edges.extend(term.as_term().edges().into_owned());
+            }
             Term::Union(unions) => {
                 let from = self.node();
 
