@@ -13,5 +13,5 @@
 // limitations under the License.
 //
 
-pub mod sla;
 pub mod calculate;
+pub mod sla;

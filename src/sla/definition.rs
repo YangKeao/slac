@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use crate::calculate::{Atom, Term, DumpTerm, ITerm};
+use crate::calculate::{Atom, DumpTerm, ITerm, Term};
 
 use std::{cell::RefCell, sync::Arc};
 
@@ -21,14 +21,12 @@ use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct Infra {
-    sla: f64
+    sla: f64,
 }
 
 impl Infra {
     pub fn new(sla: f64) -> Infra {
-        Infra {
-            sla
-        }
+        Infra { sla }
     }
 }
 
@@ -43,14 +41,12 @@ impl Atom for &Infra {
 
 #[derive(Debug)]
 pub struct Connection {
-    sla: f64
+    sla: f64,
 }
 
 impl Connection {
     pub fn new(sla: f64) -> Connection {
-        Connection {
-            sla
-        }
+        Connection { sla }
     }
 }
 
@@ -70,21 +66,24 @@ pub struct Program<'a> {
 
 impl<'a> Program<'a> {
     pub fn new(infra: &'a Infra) -> Self {
-        Self { infra, depends: RefCell::new(Vec::new()) }
+        Self {
+            infra,
+            depends: RefCell::new(Vec::new()),
+        }
     }
 
-    pub unsafe fn depend<'c: 'a, 's1: 'a, 's2: 'a>(&self, connection: &'c Connection, svc: &'s1 dyn IService) {
+    pub unsafe fn depend<'c: 'a, 's1: 'a, 's2: 'a>(
+        &self,
+        connection: &'c Connection,
+        svc: &'s1 dyn IService,
+    ) {
         self.depends.borrow_mut().push((connection, svc));
     }
 }
 
-pub trait IProgram: DumpTerm {
+pub trait IProgram: DumpTerm {}
 
-}
-
-impl<'a> IProgram for Program<'a> {
-
-}
+impl<'a> IProgram for Program<'a> {}
 
 impl<'a> DumpTerm for Program<'a> {
     fn dump_term(&self) -> Term {
@@ -102,7 +101,7 @@ impl<'a> DumpTerm for Program<'a> {
 
 #[derive(Debug)]
 pub struct ExternalService {
-    sla: f64
+    sla: f64,
 }
 
 impl ExternalService {
@@ -121,38 +120,32 @@ impl Atom for &ExternalService {
 }
 
 pub struct InternalService<'a> {
-    internal: GroupOrProgram<'a>
+    internal: GroupOrProgram<'a>,
 }
 
 impl<'a> InternalService<'a> {
     pub fn new(internal: GroupOrProgram<'a>) -> Self {
-        Self {
-            internal,
-        }
+        Self { internal }
     }
 }
 
 pub enum Service<'a> {
     External(ExternalService),
-    Internal(InternalService<'a>)
+    Internal(InternalService<'a>),
 }
 
-pub trait IService: DumpTerm {
-}
+pub trait IService: DumpTerm {}
 
-impl<'a> IService for Service<'a> {
-}
+impl<'a> IService for Service<'a> {}
 
 impl<'a> DumpTerm for Service<'a> {
     fn dump_term(&self) -> Term {
         match self {
             Service::External(svc) => Term::Atom(Arc::new(svc)),
-            Service::Internal(internal) => {
-                match internal.internal {
-                    GroupOrProgram::Group(group) => group.dump_term(),
-                    GroupOrProgram::Program(program) => program.dump_term(),
-                }
-            }
+            Service::Internal(internal) => match internal.internal {
+                GroupOrProgram::Group(group) => group.dump_term(),
+                GroupOrProgram::Program(program) => program.dump_term(),
+            },
         }
     }
 }
@@ -178,7 +171,7 @@ impl<'a> Group<'a> {
 impl<'a> DumpTerm for Group<'a> {
     fn dump_term(&self) -> Term {
         // TODO: do some optimization here
-        // e.g. if there are some isomorphic relationships between programs, we can calculate the 
+        // e.g. if there are some isomorphic relationships between programs, we can calculate the
         // probability in toltal
         let mut unions: Vec<Box<dyn ITerm + 'a>> = Vec::new();
 
@@ -189,7 +182,7 @@ impl<'a> DumpTerm for Group<'a> {
                 for program in combination {
                     intersects.push(Box::new(program.dump_term()));
                 }
-    
+
                 if intersects.len() != 0 {
                     unions.push(Box::new(Term::Intersect(intersects)));
                 }
@@ -206,7 +199,7 @@ impl<'a> DumpTerm for Group<'a> {
 
 pub enum GroupOrProgram<'a> {
     Group(&'a Group<'a>),
-    Program(&'a Program<'a>)
+    Program(&'a Program<'a>),
 }
 
 #[cfg(test)]
@@ -222,7 +215,7 @@ mod tests {
         fn aws_connection() -> Connection {
             Connection::new(0.99)
         }
-        
+
         let infra_a = ec2_infra();
         let program_a = Program::new(&infra_a);
 

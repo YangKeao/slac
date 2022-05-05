@@ -1,5 +1,5 @@
-use slac::sla::*;
 use slac::calculate::DumpTerm;
+use slac::sla::*;
 
 fn main() {
     fn ec2_infra() -> Infra {
@@ -8,7 +8,7 @@ fn main() {
     fn aws_connection() -> Connection {
         Connection::new(0.99)
     }
-    
+
     let infra_a = ec2_infra();
     let program_a = Program::new(&infra_a);
 
@@ -56,10 +56,10 @@ fn main() {
 
     let term = end_svc.dump_term();
     let term_without_none = term.remove_none().unwrap();
-    
+
     let mut f = std::fs::File::create("logic_tree.dot").unwrap();
-    dot::render(&term,&mut f).unwrap();
+    dot::render(&term, &mut f).unwrap();
 
     let mut f = std::fs::File::create("logic_tree_remove_none.dot").unwrap();
-    dot::render(&term_without_none,&mut f).unwrap();
+    dot::render(&term_without_none, &mut f).unwrap();
 }

@@ -13,15 +13,13 @@
 // limitations under the License.
 //
 
-use super::{Term, ITerm};
+use super::{ITerm, Term};
 
 impl<'a> Term<'a> {
     pub fn remove_none(&'a self) -> Option<Term<'a>> {
         match self {
             Term::None => None,
-            Term::Atom(atom) => {
-                Some(Term::Atom(atom.clone()))
-            },
+            Term::Atom(atom) => Some(Term::Atom(atom.clone())),
             Term::Not(term) => {
                 if let Some(term) = term.as_term().remove_none() {
                     Some(Term::Not(Box::new(term)))
@@ -34,27 +32,27 @@ impl<'a> Term<'a> {
                     .iter()
                     .map(|item| item.as_term())
                     .filter_map(|term| term.remove_none())
-                    .map(|item| -> Box<dyn ITerm + 'a> {Box::new(item)})
+                    .map(|item| -> Box<dyn ITerm + 'a> { Box::new(item) })
                     .collect();
                 if non_empty_unions.len() == 0 {
                     None
                 } else {
                     Some(Term::Union(non_empty_unions))
                 }
-            },
+            }
             Term::Intersect(intersects) => {
                 let non_empty_intersects: Vec<Box<dyn ITerm + 'a>> = intersects
                     .iter()
                     .map(|item| item.as_term())
                     .filter_map(|term| term.remove_none())
-                    .map(|item| -> Box<dyn ITerm + 'a> {Box::new(item)})
+                    .map(|item| -> Box<dyn ITerm + 'a> { Box::new(item) })
                     .collect();
                 if non_empty_intersects.len() == 0 {
                     None
                 } else {
                     Some(Term::Intersect(non_empty_intersects))
                 }
-            },
+            }
         }
     }
 }

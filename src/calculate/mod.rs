@@ -13,8 +13,8 @@
 // limitations under the License.
 //
 
-mod term;
 mod dot;
 mod optimize;
+mod term;
 
 pub use term::*;

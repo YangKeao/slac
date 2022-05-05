@@ -37,8 +37,8 @@ pub enum Term<'a> {
 impl<'a> Term<'a> {
     pub fn is_none(&self) -> bool {
         match self {
-            Term::None => {true}
-            _ => false
+            Term::None => true,
+            _ => false,
         }
     }
 }

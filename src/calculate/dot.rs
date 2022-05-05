@@ -13,9 +13,9 @@
 // limitations under the License.
 //
 
-use super::{Term};
+use super::Term;
 
-use std::{borrow::Cow};
+use std::borrow::Cow;
 
 #[derive(Clone)]
 pub struct TermNode {
@@ -29,9 +29,10 @@ pub struct TermEdge {
     target: TermNode,
 }
 
-
 impl<'a> dot::Labeller<'a, TermNode, TermEdge> for Term<'a> {
-    fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new("example1").unwrap() }
+    fn graph_id(&'a self) -> dot::Id<'a> {
+        dot::Id::new("example1").unwrap()
+    }
 
     fn node_id(&'a self, n: &TermNode) -> dot::Id<'a> {
         dot::Id::new(format!("n{}", n.id)).unwrap()
@@ -45,36 +46,26 @@ impl<'a> dot::Labeller<'a, TermNode, TermEdge> for Term<'a> {
 impl<'a> Term<'a> {
     fn node(&self) -> TermNode {
         match self {
-            Term::None => {
-                TermNode {
-                    content: "None".to_string(),
-                    id: self as *const Term as usize,
-                }
-            }
-            Term::Not(_) => {
-                TermNode {
-                    content: "Not".to_string(),
-                    id: self as *const Term as usize,
-                }
-            }
-            Term::Atom(atom) => {
-                TermNode {
-                    content: atom.name(),
-                    id: self as *const Term as usize
-                }
-            }
-            Term::Union(_) => {
-                TermNode {
-                    content: "Union".to_string(),
-                    id: self as *const Term as usize 
-                }
-            }
-            Term::Intersect(_) => {
-                TermNode {
-                    content: "Intersect".to_string(),
-                    id: self as *const Term as usize 
-                }
-            }
+            Term::None => TermNode {
+                content: "None".to_string(),
+                id: self as *const Term as usize,
+            },
+            Term::Not(_) => TermNode {
+                content: "Not".to_string(),
+                id: self as *const Term as usize,
+            },
+            Term::Atom(atom) => TermNode {
+                content: atom.name(),
+                id: self as *const Term as usize,
+            },
+            Term::Union(_) => TermNode {
+                content: "Union".to_string(),
+                id: self as *const Term as usize,
+            },
+            Term::Intersect(_) => TermNode {
+                content: "Intersect".to_string(),
+                id: self as *const Term as usize,
+            },
         }
     }
 }
@@ -87,10 +78,10 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
         match self {
             Term::None => {
                 nodes.push(self.node());
-            },
+            }
             Term::Atom(_) => {
                 nodes.push(self.node());
-            },
+            }
             Term::Not(term) => {
                 nodes.push(self.node());
                 nodes.extend(term.as_term().nodes().into_owned());
@@ -98,19 +89,21 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
             Term::Union(unions) => {
                 nodes.push(self.node());
                 for union in unions
-                .iter()
-                .map(|item| item.as_term().nodes().into_owned()) {
+                    .iter()
+                    .map(|item| item.as_term().nodes().into_owned())
+                {
                     nodes.extend(union);
                 }
-            },
+            }
             Term::Intersect(intersects) => {
                 nodes.push(self.node());
                 for intersect in intersects
-                .iter()
-                .map(|item| item.as_term().nodes().into_owned()) {
+                    .iter()
+                    .map(|item| item.as_term().nodes().into_owned())
+                {
                     nodes.extend(intersect);
                 }
-            },
+            }
         }
 
         Cow::Owned(nodes)
@@ -120,8 +113,8 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
         let mut edges = Vec::new();
 
         match self {
-            Term::None => {},
-            Term::Atom(_) => {},
+            Term::None => {}
+            Term::Atom(_) => {}
             Term::Not(term) => {
                 let from = self.node();
 
@@ -141,7 +134,7 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
                     });
                     edges.extend(union.as_term().edges().into_owned());
                 }
-            },
+            }
             Term::Intersect(intersects) => {
                 let from = self.node();
 
@@ -152,14 +145,17 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
                     });
                     edges.extend(intersect.as_term().edges().into_owned());
                 }
-            },
+            }
         }
-        
+
         Cow::Owned(edges)
     }
 
-    fn source(&self, e: &TermEdge) -> TermNode { e.source.clone() }
+    fn source(&self, e: &TermEdge) -> TermNode {
+        e.source.clone()
+    }
 
-    fn target(&self, e: &TermEdge) -> TermNode { e.target.clone() }
+    fn target(&self, e: &TermEdge) -> TermNode {
+        e.target.clone()
+    }
 }
-
