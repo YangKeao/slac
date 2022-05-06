@@ -29,6 +29,8 @@ pub enum Term<'a> {
     // one atom could be shared by multiple transforming terms
     Atom(Arc<dyn Atom + 'a>),
 
+    Not(Box<Term<'a>>),
+
     Union(Vec<Box<Term<'a>>>),
     Intersect(Vec<Box<Term<'a>>>),
 }

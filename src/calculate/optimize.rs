@@ -20,6 +20,13 @@ impl<'a> Term<'a> {
         match self {
             Term::None => None,
             Term::Atom(atom) => Some(Term::Atom(atom.clone())),
+            Term::Not(term) => {
+                if let Some(subterm) = term.remove_none() {
+                    Some(Term::Not(Box::new(subterm)))
+                } else {
+                    None
+                }
+            }
             Term::Union(unions) => {
                 let non_empty_unions: Vec<Box<Term<'a>>> = unions
                     .iter()
@@ -55,6 +62,7 @@ impl<'a> Term<'a> {
         match self {
             Term::None => Term::None,
             Term::Atom(atom) => Term::Atom(atom.clone()),
+            Term::Not(term) => Term::Not(Box::new(term.flat())),
             Term::Union(unions) => {
                 assert!(unions.len() > 0);
 
@@ -91,6 +99,54 @@ impl<'a> Term<'a> {
                     Term::Intersect(flat_intersect)
                 }
             }
+        }
+    }
+
+    pub fn not_push_down<'s>(&'s self) -> Term<'a> {
+        match self {
+            Term::None => Term::None,
+            Term::Atom(atom) => Term::Atom(atom.clone()),
+            Term::Not(subterm) => {
+                match subterm.as_ref() {
+                    Term::None => Term::None,
+                    Term::Atom(_) => self.clone(),
+                    Term::Not(subterm) => subterm.not_push_down(),
+                    Term::Intersect(intersects) => {
+                        // according to De Morgan's laws
+                        let mut unions: Vec<Box<Term<'a>>> = Vec::new();
+                        for item in intersects.iter() {
+                            let not_item = Term::Not(item.clone());
+                            let not_item = not_item.not_push_down();
+                            unions.push(Box::new(not_item));
+                        }
+
+                        Term::Union(unions)
+                    }
+                    Term::Union(unions) => {
+                        // according to De Morgan's laws
+                        let mut intersects: Vec<Box<Term<'a>>> = Vec::new();
+                        for item in unions.iter() {
+                            let not_item = Term::Not(item.clone());
+                            let not_item = not_item.not_push_down();
+                            intersects.push(Box::new(not_item));
+                        }
+
+                        Term::Intersect(intersects)
+                    }
+                }
+            }
+            Term::Union(unions) => Term::Union(
+                unions
+                    .iter()
+                    .map(|item| Box::new(item.not_push_down()))
+                    .collect(),
+            ),
+            Term::Intersect(intersects) => Term::Intersect(
+                intersects
+                    .iter()
+                    .map(|item| Box::new(item.not_push_down()))
+                    .collect(),
+            ),
         }
     }
 }

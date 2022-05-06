@@ -3,10 +3,10 @@ use slac::sla::*;
 
 fn main() {
     fn ec2_infra() -> Infra {
-        Infra::new(0.99)
+        Infra::new(0.9999)
     }
     fn aws_connection() -> Connection {
-        Connection::new(0.99)
+        Connection::new(0.9999)
     }
 
     let infra_a = ec2_infra();
@@ -62,4 +62,6 @@ fn main() {
 
     let mut f = std::fs::File::create("logic_tree_remove_none.dot").unwrap();
     dot::render(&term_without_none, &mut f).unwrap();
+
+    println!("probability result: {}", term.calc());
 }

@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 itertools = "0.10"
 dot = "0.1"
+rand = "0.8"
+float-cmp = "0.9"

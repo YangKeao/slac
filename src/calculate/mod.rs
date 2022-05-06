@@ -15,7 +15,7 @@
 
 mod dot;
 mod optimize;
-mod term;
 mod probability;
+mod term;
 
 pub use term::*;
