@@ -18,7 +18,7 @@ Represent your service with these five terms, the `slac` can help you to calcula
 
 ### Calculation
 
-We can represent the event "Service A is available" by the intersect or union of "X is available", where X is with predefined SLA. After the 1:1 representation, we can simplify the expression to DNF, and expand it to the direct sum and minus between intersection of events.
+We can represent the event "Service A is available" by the intersect or union of "X is available", where X is with predefined SLA.
 
 With the assumption that "X is available" (where X is with predefined SLA) is independent, we can calculate the final SLA.
 

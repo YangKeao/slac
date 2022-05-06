@@ -45,22 +45,23 @@ impl<'a> dot::Labeller<'a, TermNode, TermEdge> for Term<'a> {
 
 impl<'a> Term<'a> {
     fn node(&self) -> TermNode {
+        let id = self as *const Term as usize;
         match self {
             Term::None => TermNode {
                 content: "None".to_string(),
-                id: self as *const Term as usize,
+                id,
             },
             Term::Atom(atom) => TermNode {
                 content: atom.name(),
-                id: self as *const Term as usize,
+                id,
             },
             Term::Union(_) => TermNode {
                 content: "Union".to_string(),
-                id: self as *const Term as usize,
+                id,
             },
             Term::Intersect(_) => TermNode {
                 content: "Intersect".to_string(),
-                id: self as *const Term as usize,
+                id,
             },
         }
     }

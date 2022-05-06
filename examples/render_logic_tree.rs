@@ -56,18 +56,10 @@ fn main() {
 
     let term = end_svc.dump_term();
     let term_without_none = term.remove_none().unwrap();
-    let term_dnf = term.dnf();
-    let term_dnf_flat = term_dnf.flat();
 
     let mut f = std::fs::File::create("logic_tree.dot").unwrap();
     dot::render(&term, &mut f).unwrap();
 
     let mut f = std::fs::File::create("logic_tree_remove_none.dot").unwrap();
     dot::render(&term_without_none, &mut f).unwrap();
-
-    let mut f = std::fs::File::create("logic_tree_dnf.dot").unwrap();
-    dot::render(&term_dnf, &mut f).unwrap();
-
-    let mut f = std::fs::File::create("logic_tree_dnf_flat.dot").unwrap();
-    dot::render(&term_dnf_flat, &mut f).unwrap();
 }

@@ -13,9 +13,20 @@
 // limitations under the License.
 //
 
-mod dot;
-mod optimize;
-mod term;
-mod probability;
+use super::Term;
 
-pub use term::*;
+impl<'a> Term<'a> {
+    // calc receives a flat term without none and returns a probability
+    fn calc(&self) -> f64 {
+        match self {
+            Term::None => unreachable!(),
+            Term::Atom(atom) => atom.probability(),
+            Term::Union(unions) => {
+                todo!()
+            }
+            Term::Intersect(intersects) => {
+                todo!()
+            }
+        }
+    }
+}
