@@ -13,8 +13,6 @@
 // limitations under the License.
 //
 
-use std::ops::Mul;
-
 use super::{MultiOp, Term, UnaryOp};
 
 impl Term {
@@ -57,23 +55,23 @@ impl Term {
                     for item in terms.into_iter() {
                         let flated_child = item.flat();
                         match flated_child {
-                            Term::Multiple { terms: child_terms, op: child_op } => {
+                            Term::Multiple {
+                                terms: child_terms,
+                                op: child_op,
+                            } => {
                                 if child_op == op {
                                     flated.extend(child_terms)
                                 } else {
                                     flated.push(Term::Multiple {
                                         terms: child_terms,
-                                        op: child_op
+                                        op: child_op,
                                     })
                                 }
                             }
                             _ => flated.push(flated_child),
                         }
                     }
-                    Term::Multiple {
-                        terms: flated,
-                        op,
-                    }
+                    Term::Multiple { terms: flated, op }
                 }
             }
         }
@@ -84,7 +82,7 @@ impl Term {
             Term::None => {
                 unreachable!()
             }
-            Term::Unary { atom, op } => {
+            Term::Unary { atom: _, op } => {
                 if *op == UnaryOp::None {
                     *op = UnaryOp::Not;
                 } else if *op == UnaryOp::Not {

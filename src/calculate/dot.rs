@@ -59,21 +59,21 @@ impl Term {
                 id,
             },
             Term::Unary {
-                atom,
+                atom: _,
                 op: UnaryOp::Not,
             } => TermNode {
                 content: "Not".to_string(),
                 id,
             },
             Term::Multiple {
-                terms,
+                terms:_,
                 op: MultiOp::Union,
             } => TermNode {
                 content: "Union".to_string(),
                 id,
             },
             Term::Multiple {
-                terms,
+                terms:_,
                 op: MultiOp::Intersect,
             } => TermNode {
                 content: "Intersect".to_string(),
@@ -93,7 +93,7 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term {
                 nodes.push(self.node());
             }
             Term::Unary {
-                atom,
+                atom: _,
                 op: UnaryOp::None,
             } => {
                 nodes.push(self.node());
