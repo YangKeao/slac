@@ -13,29 +13,42 @@
 // limitations under the License.
 //
 
-use std::{fmt::Debug, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
 
-pub trait Atom: Debug {
-    fn probability(&self) -> f64;
-    fn name(&self) -> String;
+#[derive(Debug)]
+pub struct Atom {
+    probability: f64,
+    name: String,
+}
+
+impl Atom {
+    /// Get a reference to the atom's name.
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    /// Get a reference to the atom's probability.
+    pub fn probability(&self) -> f64 {
+        self.probability
+    }
 }
 
 #[derive(Debug, Clone)]
-pub enum Term<'a> {
+pub enum Term {
     // none is a special case that represents the empty set
     // anything calculate with none results in itself
     None,
 
     // one atom could be shared by multiple transforming terms
-    Atom(Arc<dyn Atom + 'a>),
+    Atom(Arc<Atom>),
 
-    Not(Box<Term<'a>>),
+    Not(Box<Term>),
 
-    Union(Vec<Box<Term<'a>>>),
-    Intersect(Vec<Box<Term<'a>>>),
+    Union(Vec<Box<Term>>),
+    Intersect(Vec<Box<Term>>),
 }
 
-impl<'a> Term<'a> {
+impl Term {
     pub fn is_none(&self) -> bool {
         match self {
             Term::None => true,
@@ -44,6 +57,25 @@ impl<'a> Term<'a> {
     }
 }
 
+pub struct AtomRegistry {
+    registry: HashMap<String, Arc<Atom>>,
+}
+
+impl AtomRegistry {
+    pub fn new() -> Self {
+        Self {
+            registry: HashMap::new(),
+        }
+    }
+
+    pub fn new_atom(&mut self, name: String, probability: f64) -> Arc<Atom> {
+        self.registry
+            .entry(name.clone())
+            .or_insert(Arc::new(Atom { name, probability }))
+            .clone()
+    }
+}
+
 pub trait DumpTerm {
-    fn dump_term(&self) -> Term;
+    fn dump_term(&self, registry: &mut AtomRegistry) -> Term;
 }

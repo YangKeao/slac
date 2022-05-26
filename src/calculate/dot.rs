@@ -29,7 +29,7 @@ pub struct TermEdge {
     target: TermNode,
 }
 
-impl<'a> dot::Labeller<'a, TermNode, TermEdge> for Term<'a> {
+impl<'a> dot::Labeller<'a, TermNode, TermEdge> for Term {
     fn graph_id(&'a self) -> dot::Id<'a> {
         dot::Id::new("example1").unwrap()
     }
@@ -43,7 +43,7 @@ impl<'a> dot::Labeller<'a, TermNode, TermEdge> for Term<'a> {
     }
 }
 
-impl<'a> Term<'a> {
+impl Term {
     fn node(&self) -> TermNode {
         let id = self as *const Term as usize;
         match self {
@@ -52,7 +52,7 @@ impl<'a> Term<'a> {
                 id,
             },
             Term::Atom(atom) => TermNode {
-                content: atom.name(),
+                content: atom.name().to_string(),
                 id,
             },
             Term::Not(_) => TermNode {
@@ -71,7 +71,7 @@ impl<'a> Term<'a> {
     }
 }
 
-impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term<'a> {
+impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term {
     fn nodes(&self) -> dot::Nodes<'a, TermNode> {
         // (assumes that |N| \approxeq |E|)
         let mut nodes = Vec::new();

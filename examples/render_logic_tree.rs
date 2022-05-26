@@ -1,60 +1,60 @@
-use slac::calculate::DumpTerm;
+use slac::calculate::{AtomRegistry, DumpTerm};
 use slac::sla::*;
 
+use std::sync::Arc;
+
 fn main() {
-    fn ec2_infra() -> Infra {
-        Infra::new(0.9999)
-    }
-    fn aws_connection() -> Connection {
-        Connection::new(0.9999)
-    }
-
-    let infra_a = ec2_infra();
-    let program_a = Program::new(&infra_a);
-
-    let infra_b = ec2_infra();
-    let program_c = Program::new(&infra_b);
-
-    let infra_c = ec2_infra();
-    let program_d = Program::new(&infra_c);
-    let program_e = Program::new(&infra_c);
-    let program_b = Program::new(&infra_c);
-
-    let infra_e = ec2_infra();
-    let program_g = Program::new(&infra_e);
-
-    let group_a = Group::new(2);
-    unsafe {
-        group_a.add(&program_d);
-        group_a.add(&program_e);
-        group_a.add(&program_c);
-        group_a.add(&program_g);
+    macro_rules! ec2_infra {
+        ($name: ident) => {
+            let $name = Service::known_sla(stringify!($name), 0.9999);
+        };
     }
 
-    let svc_a = Service::Internal(InternalService::new(GroupOrProgram::Group(&group_a)));
-    let svc_b = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_c)));
-
-    let connection_a = aws_connection();
-    let connection_b = aws_connection();
-    unsafe {
-        program_a.depend(&connection_a, &svc_a);
-        program_a.depend(&connection_b, &svc_b);
+    macro_rules! aws_connection {
+        ($name: ident) => {
+            let $name = Service::known_sla(stringify!($name), 0.9999);
+        };
     }
 
-    let infra_d = ec2_infra();
-    let program_f = Program::new(&infra_d);
-    let svc_c = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_a)));
-    let svc_d = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_b)));
-    let connection_c = aws_connection();
-    let connection_d = aws_connection();
-    unsafe {
-        program_f.depend(&connection_c, &svc_c);
-        program_f.depend(&connection_d, &svc_d);
-    }
+    ec2_infra!(infra_a);
+    ec2_infra!(infra_b);
+    ec2_infra!(infra_c);
+    ec2_infra!(infra_d);
+    ec2_infra!(infra_e);
 
-    let end_svc = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_f)));
+    aws_connection!(connection_a);
+    aws_connection!(connection_b);
+    aws_connection!(connection_c);
+    aws_connection!(connection_d);
 
-    let term = end_svc.dump_term();
+    let svc_c = Service::dependencies(vec![Dependency::Service(infra_b)]);
+
+    let svc_d = Service::dependencies(vec![Dependency::Service(infra_c.clone())]);
+    let svc_e = Service::dependencies(vec![Dependency::Service(infra_c.clone())]);
+    let svc_b = Service::dependencies(vec![Dependency::Service(infra_c)]);
+
+    let svc_g = Service::dependencies(vec![Dependency::Service(infra_e)]);
+
+    let group_a = Group::new(vec![svc_d, svc_e, svc_c.clone(), svc_g], 2);
+
+    let svc_a = Service::dependencies(vec![
+        Dependency::Service(infra_a),
+        Dependency::Service(connection_a),
+        Dependency::Group(group_a),
+        Dependency::Service(connection_b),
+        Dependency::Service(svc_c),
+    ]);
+
+    let svc_f = Service::dependencies(vec![
+        Dependency::Service(infra_d),
+        Dependency::Service(connection_c),
+        Dependency::Service(svc_a),
+        Dependency::Service(connection_d),
+        Dependency::Service(svc_b),
+    ]);
+
+    let mut atom_registry = AtomRegistry::new();
+    let term = svc_f.dump_term(&mut atom_registry);
     let term_without_none = term.remove_none().unwrap();
 
     let mut f = std::fs::File::create("logic_tree.dot").unwrap();

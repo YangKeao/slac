@@ -13,174 +13,95 @@
 // limitations under the License.
 //
 
-use crate::calculate::{Atom, DumpTerm, Term};
-
 use std::{cell::RefCell, sync::Arc};
+
+use crate::calculate::{Atom, AtomRegistry, DumpTerm, Term};
 
 use itertools::Itertools;
 
-#[derive(Debug)]
-pub struct Infra {
-    sla: f64,
+pub enum Service {
+    KnownSLA { name: String, sla: f64 },
+    Dependencies(Vec<Dependency>),
 }
 
-impl Infra {
-    pub fn new(sla: f64) -> Infra {
-        Infra { sla }
+pub struct Group {
+    dependencies: Vec<Arc<Service>>,
+    quorum: usize,
+}
+
+// Actually, a service and a group doesn't have too much difference just left
+// here for the convinience.
+pub enum Dependency {
+    // The user actually can cause loop reference, in which case Arc will fail
+    // to work. However, this program also cannot work well under the loop
+    // dependency, so the user should handle the loop reference situation by
+    // themselves.
+    Service(Arc<Service>),
+    Group(Arc<Group>),
+}
+
+pub struct AtomAllocator {}
+
+impl Service {
+    pub fn known_sla<S: AsRef<str>>(name: S, sla: f64) -> Arc<Service> {
+        Arc::new(Service::KnownSLA {
+            name: name.as_ref().to_string(),
+            sla,
+        })
+    }
+
+    pub fn dependencies(dependencies: Vec<Dependency>) -> Arc<Service> {
+        Arc::new(Service::Dependencies(dependencies))
     }
 }
 
-impl Atom for &Infra {
-    fn probability(&self) -> f64 {
-        1.0 - self.sla
-    }
-    fn name(&self) -> String {
-        format!("Infra{:#x}", *self as *const _ as usize)
-    }
-}
-
-#[derive(Debug)]
-pub struct Connection {
-    sla: f64,
-}
-
-impl Connection {
-    pub fn new(sla: f64) -> Connection {
-        Connection { sla }
+impl Group {
+    pub fn new(dependencies: Vec<Arc<Service>>, quorum: usize) -> Arc<Group> {
+        Arc::new(Group {
+            dependencies,
+            quorum,
+        })
     }
 }
 
-impl Atom for &Connection {
-    fn probability(&self) -> f64 {
-        1.0 - self.sla
-    }
-    fn name(&self) -> String {
-        format!("Conn{:#x}", *self as *const _ as usize)
-    }
-}
+impl DumpTerm for Service {
+    fn dump_term(&self, registry: &mut AtomRegistry) -> Term {
+        match &self {
+            Service::KnownSLA { name, sla } => Term::Atom(registry.new_atom(name.clone(), *sla)),
+            Service::Dependencies(dependencies) => {
+                let mut intersects: Vec<Box<Term>> = Vec::new();
 
-pub struct Program<'a> {
-    infra: &'a Infra,
-    depends: RefCell<Vec<(&'a Connection, &'a dyn IService)>>,
-}
+                for dep in dependencies {
+                    match dep {
+                        Dependency::Service(svc) => {
+                            intersects.push(Box::new(svc.dump_term(registry)))
+                        }
+                        Dependency::Group(group) => {
+                            intersects.push(Box::new(group.dump_term(registry)))
+                        }
+                    }
+                }
 
-impl<'a> Program<'a> {
-    pub fn new(infra: &'a Infra) -> Self {
-        Self {
-            infra,
-            depends: RefCell::new(Vec::new()),
-        }
-    }
-
-    pub unsafe fn depend<'c: 'a, 's1: 'a, 's2: 'a>(
-        &self,
-        connection: &'c Connection,
-        svc: &'s1 dyn IService,
-    ) {
-        self.depends.borrow_mut().push((connection, svc));
-    }
-}
-
-pub trait IProgram: DumpTerm {}
-
-impl<'a> IProgram for Program<'a> {}
-
-impl<'a> DumpTerm for Program<'a> {
-    fn dump_term(&self) -> Term {
-        let infra = Term::Atom(Arc::new(self.infra));
-        let mut unions: Vec<Box<Term<'a>>> = Vec::new();
-        unions.push(Box::new(infra));
-        for (conn, svc) in self.depends.borrow().iter() {
-            unions.push(Box::new(Term::Atom(Arc::new(*conn))));
-            unions.push(Box::new(svc.dump_term()));
-        }
-
-        Term::Union(unions)
-    }
-}
-
-#[derive(Debug)]
-pub struct ExternalService {
-    sla: f64,
-}
-
-impl ExternalService {
-    pub fn new(sla: f64) -> ExternalService {
-        ExternalService { sla }
-    }
-}
-
-impl Atom for &ExternalService {
-    fn probability(&self) -> f64 {
-        self.sla
-    }
-    fn name(&self) -> String {
-        format!("Svc{:#x}", *self as *const _ as usize)
-    }
-}
-
-pub struct InternalService<'a> {
-    internal: GroupOrProgram<'a>,
-}
-
-impl<'a> InternalService<'a> {
-    pub fn new(internal: GroupOrProgram<'a>) -> Self {
-        Self { internal }
-    }
-}
-
-pub enum Service<'a> {
-    External(ExternalService),
-    Internal(InternalService<'a>),
-}
-
-pub trait IService: DumpTerm {}
-
-impl<'a> IService for Service<'a> {}
-
-impl<'a> DumpTerm for Service<'a> {
-    fn dump_term(&self) -> Term {
-        match self {
-            Service::External(svc) => Term::Atom(Arc::new(svc)),
-            Service::Internal(internal) => match internal.internal {
-                GroupOrProgram::Group(group) => group.dump_term(),
-                GroupOrProgram::Program(program) => program.dump_term(),
-            },
+                if intersects.len() == 0 {
+                    Term::None
+                } else {
+                    Term::Intersect(intersects)
+                }
+            }
         }
     }
 }
 
-pub struct Group<'a> {
-    programs: RefCell<Vec<&'a dyn IProgram>>,
-    min_replica: usize,
-}
+impl DumpTerm for Group {
+    fn dump_term(&self, registry: &mut AtomRegistry) -> Term {
+        let mut unions: Vec<Box<Term>> = Vec::new();
 
-impl<'a> Group<'a> {
-    pub fn new(min_replica: usize) -> Self {
-        Self {
-            programs: RefCell::new(Vec::new()),
-            min_replica,
-        }
-    }
-
-    pub unsafe fn add(&self, program: &'a dyn IProgram) {
-        self.programs.borrow_mut().push(program);
-    }
-}
-
-impl<'a> DumpTerm for Group<'a> {
-    fn dump_term(&self) -> Term {
-        // TODO: do some optimization here
-        // e.g. if there are some isomorphic relationships between programs, we can calculate the
-        // probability in toltal
-        let mut unions: Vec<Box<Term<'a>>> = Vec::new();
-
-        let total = self.programs.borrow().len();
-        for fail_count in total - self.min_replica + 1..total {
-            for combination in self.programs.borrow().iter().combinations(fail_count) {
-                let mut intersects: Vec<Box<Term<'a>>> = Vec::new();
-                for program in combination {
-                    intersects.push(Box::new(program.dump_term()));
+        let total = self.dependencies.len();
+        for success_count in self.quorum..total {
+            for svcs in self.dependencies.iter().combinations(success_count) {
+                let mut intersects: Vec<Box<Term>> = Vec::new();
+                for svc in svcs {
+                    intersects.push(Box::new(svc.dump_term(registry)));
                 }
 
                 if intersects.len() != 0 {
@@ -194,73 +115,5 @@ impl<'a> DumpTerm for Group<'a> {
         } else {
             Term::Union(unions)
         }
-    }
-}
-
-pub enum GroupOrProgram<'a> {
-    Group(&'a Group<'a>),
-    Program(&'a Program<'a>),
-}
-
-#[cfg(test)]
-mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
-
-    #[test]
-    fn test_define() {
-        fn ec2_infra() -> Infra {
-            Infra::new(0.99)
-        }
-        fn aws_connection() -> Connection {
-            Connection::new(0.99)
-        }
-
-        let infra_a = ec2_infra();
-        let program_a = Program::new(&infra_a);
-
-        let infra_b = ec2_infra();
-        let program_c = Program::new(&infra_b);
-
-        let infra_c = ec2_infra();
-        let program_d = Program::new(&infra_c);
-        let program_e = Program::new(&infra_c);
-        let program_b = Program::new(&infra_c);
-
-        let infra_e = ec2_infra();
-        let program_g = Program::new(&infra_e);
-
-        let group_a = Group::new(2);
-        unsafe {
-            group_a.add(&program_d);
-            group_a.add(&program_e);
-            group_a.add(&program_c);
-            group_a.add(&program_g);
-        }
-
-        let svc_a = Service::Internal(InternalService::new(GroupOrProgram::Group(&group_a)));
-        let svc_b = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_c)));
-
-        let connection_a = aws_connection();
-        let connection_b = aws_connection();
-        unsafe {
-            program_a.depend(&connection_a, &svc_a);
-            program_a.depend(&connection_b, &svc_b);
-        }
-
-        let infra_d = ec2_infra();
-        let program_f = Program::new(&infra_d);
-        let svc_c = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_a)));
-        let svc_d = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_b)));
-        let connection_c = aws_connection();
-        let connection_d = aws_connection();
-        unsafe {
-            program_f.depend(&connection_c, &svc_c);
-            program_f.depend(&connection_d, &svc_d);
-        }
-
-        let end_svc = Service::Internal(InternalService::new(GroupOrProgram::Program(&program_f)));
-        // Then the end_svc is what we need to calculate
-        println!("{:?}", end_svc.dump_term());
     }
 }

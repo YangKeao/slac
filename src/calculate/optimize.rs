@@ -15,8 +15,8 @@
 
 use super::Term;
 
-impl<'a> Term<'a> {
-    pub fn remove_none<'s>(&'s self) -> Option<Term<'a>> {
+impl Term {
+    pub fn remove_none<'s>(&'s self) -> Option<Term> {
         match self {
             Term::None => None,
             Term::Atom(atom) => Some(Term::Atom(atom.clone())),
@@ -28,10 +28,10 @@ impl<'a> Term<'a> {
                 }
             }
             Term::Union(unions) => {
-                let non_empty_unions: Vec<Box<Term<'a>>> = unions
+                let non_empty_unions: Vec<Box<Term>> = unions
                     .iter()
                     .filter_map(|term| term.remove_none())
-                    .map(|item| -> Box<Term<'a>> { Box::new(item) })
+                    .map(|item| -> Box<Term> { Box::new(item) })
                     .collect();
                 if non_empty_unions.len() == 0 {
                     None
@@ -40,10 +40,10 @@ impl<'a> Term<'a> {
                 }
             }
             Term::Intersect(intersects) => {
-                let non_empty_intersects: Vec<Box<Term<'a>>> = intersects
+                let non_empty_intersects: Vec<Box<Term>> = intersects
                     .iter()
                     .filter_map(|term| term.remove_none())
-                    .map(|item| -> Box<Term<'a>> { Box::new(item) })
+                    .map(|item| -> Box<Term> { Box::new(item) })
                     .collect();
                 if non_empty_intersects.len() == 0 {
                     None
@@ -58,7 +58,7 @@ impl<'a> Term<'a> {
     // 1. The operand of union is not union
     // 2. The operand of intersect is not intersect
     // 3. The number of operand of union or intersect is more than 1
-    pub fn flat<'s>(&'s self) -> Term<'a> {
+    pub fn flat<'s>(&'s self) -> Term {
         match self {
             Term::None => Term::None,
             Term::Atom(atom) => Term::Atom(atom.clone()),
@@ -69,7 +69,7 @@ impl<'a> Term<'a> {
                 if unions.len() == 1 {
                     unions[0].flat()
                 } else {
-                    let mut flat_union: Vec<Box<Term<'a>>> = Vec::new();
+                    let mut flat_union: Vec<Box<Term>> = Vec::new();
                     for item in unions.iter() {
                         let flat_child = item.flat();
                         match flat_child {
@@ -87,7 +87,7 @@ impl<'a> Term<'a> {
                 if intersects.len() == 1 {
                     intersects[0].flat()
                 } else {
-                    let mut flat_intersect: Vec<Box<Term<'a>>> = Vec::new();
+                    let mut flat_intersect: Vec<Box<Term>> = Vec::new();
                     for item in intersects.iter() {
                         let flat_child = item.flat();
                         match flat_child {
@@ -102,7 +102,7 @@ impl<'a> Term<'a> {
         }
     }
 
-    pub fn not_push_down<'s>(&'s self) -> Term<'a> {
+    pub fn not_push_down<'s>(&'s self) -> Term {
         match self {
             Term::None => Term::None,
             Term::Atom(atom) => Term::Atom(atom.clone()),
@@ -113,7 +113,7 @@ impl<'a> Term<'a> {
                     Term::Not(subterm) => subterm.not_push_down(),
                     Term::Intersect(intersects) => {
                         // according to De Morgan's laws
-                        let mut unions: Vec<Box<Term<'a>>> = Vec::new();
+                        let mut unions: Vec<Box<Term>> = Vec::new();
                         for item in intersects.iter() {
                             let not_item = Term::Not(item.clone());
                             let not_item = not_item.not_push_down();
@@ -124,7 +124,7 @@ impl<'a> Term<'a> {
                     }
                     Term::Union(unions) => {
                         // according to De Morgan's laws
-                        let mut intersects: Vec<Box<Term<'a>>> = Vec::new();
+                        let mut intersects: Vec<Box<Term>> = Vec::new();
                         for item in unions.iter() {
                             let not_item = Term::Not(item.clone());
                             let not_item = not_item.not_push_down();
