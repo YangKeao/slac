@@ -126,8 +126,8 @@ impl Term {
                             .map(|item| Term::Not(Box::new(item)))
                             .collect();
 
-                        let intersect = Term::Intersect(intersects).not_push_down().flat();
-                        sum += sign * intersect.inner_calc();
+                        let intersects = Term::Intersect(intersects).not_push_down().flat();
+                        sum += sign * intersects.inner_calc();
                     }
 
                     sum
@@ -136,5 +136,31 @@ impl Term {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::calculate::{AtomRegistry, Term};
+
+    #[test]
+    fn test_calc() {
+        let mut registry = AtomRegistry::new();
+
+        let prob_a = 0.5;
+        let prob_b = 0.9;
+
+        let atom_a = registry.new_atom("atom_a".to_owned(), prob_a);
+        let atom_b = registry.new_atom("atom_b".to_owned(), prob_b);
+
+        let union = Term::Union(vec![Term::Atom(atom_a.clone()), Term::Atom(atom_b.clone())]);
+        assert_eq!(union.calc(), prob_a + prob_b - prob_a * prob_b);
+
+        let intersect =
+            Term::Intersect(vec![Term::Atom(atom_a.clone()), Term::Atom(atom_b.clone())]);
+        assert_eq!(intersect.calc(), prob_a * prob_b);
+
+        let intersect_of_union = Term::Intersect(vec![union.clone(), union.clone()]);
+        assert_eq!(intersect_of_union.calc(), prob_a + prob_b - prob_a * prob_b);
     }
 }

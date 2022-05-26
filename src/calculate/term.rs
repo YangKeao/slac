@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 #[derive(Debug)]
 pub struct Atom {

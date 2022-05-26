@@ -107,7 +107,7 @@ impl Term {
             Term::Not(subterm) => {
                 match *subterm {
                     Term::None => Term::None,
-                    Term::Atom(atom) => Term::Atom(atom),
+                    Term::Atom(atom) => Term::Not(Box::new(Term::Atom(atom))),
                     Term::Not(subterm) => subterm.not_push_down(),
                     Term::Intersect(intersects) => {
                         // according to De Morgan's laws

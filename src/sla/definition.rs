@@ -13,9 +13,9 @@
 // limitations under the License.
 //
 
-use std::{cell::RefCell, sync::Arc};
+use std::sync::Arc;
 
-use crate::calculate::{Atom, AtomRegistry, DumpTerm, Term};
+use crate::calculate::{AtomRegistry, DumpTerm, Term};
 
 use itertools::Itertools;
 
@@ -73,12 +73,8 @@ impl DumpTerm for Service {
 
                 for dep in dependencies {
                     match dep {
-                        Dependency::Service(svc) => {
-                            intersects.push(svc.dump_term(registry))
-                        }
-                        Dependency::Group(group) => {
-                            intersects.push(group.dump_term(registry))
-                        }
+                        Dependency::Service(svc) => intersects.push(svc.dump_term(registry)),
+                        Dependency::Group(group) => intersects.push(group.dump_term(registry)),
                     }
                 }
 
@@ -123,7 +119,10 @@ mod tests {
     use float_cmp::approx_eq;
     use rand::Rng;
 
-    use crate::{calculate::{Atom, AtomRegistry, DumpTerm}, sla::*};
+    use crate::{
+        calculate::{AtomRegistry, DumpTerm},
+        sla::*,
+    };
 
     #[test]
     fn test_calc() {
@@ -133,34 +132,34 @@ mod tests {
                     let $name = Service::known_sla(stringify!($name), infra_sla);
                 };
             }
-        
+
             macro_rules! aws_connection {
                 ($name: ident) => {
                     let $name = Service::known_sla(stringify!($name), connection_sla);
                 };
             }
-        
+
             ec2_infra!(infra_a);
             ec2_infra!(infra_b);
             ec2_infra!(infra_c);
             ec2_infra!(infra_d);
             ec2_infra!(infra_e);
-        
+
             aws_connection!(connection_a);
             aws_connection!(connection_b);
             aws_connection!(connection_c);
             aws_connection!(connection_d);
-        
+
             let svc_c = Service::dependencies(vec![Dependency::Service(infra_b)]);
-        
+
             let svc_d = Service::dependencies(vec![Dependency::Service(infra_c.clone())]);
             let svc_e = Service::dependencies(vec![Dependency::Service(infra_c.clone())]);
             let svc_b = Service::dependencies(vec![Dependency::Service(infra_c)]);
-        
+
             let svc_g = Service::dependencies(vec![Dependency::Service(infra_e)]);
-        
+
             let group_a = Group::new(vec![svc_d, svc_e, svc_c.clone(), svc_g], 2);
-        
+
             let svc_a = Service::dependencies(vec![
                 Dependency::Service(infra_a),
                 Dependency::Service(connection_a),
@@ -168,7 +167,7 @@ mod tests {
                 Dependency::Service(connection_b),
                 Dependency::Service(svc_c),
             ]);
-        
+
             let svc_f = Service::dependencies(vec![
                 Dependency::Service(infra_d),
                 Dependency::Service(connection_c),
@@ -176,7 +175,7 @@ mod tests {
                 Dependency::Service(connection_d),
                 Dependency::Service(svc_b),
             ]);
-        
+
             let mut atom_registry = AtomRegistry::new();
             let term = svc_f.dump_term(&mut atom_registry);
 

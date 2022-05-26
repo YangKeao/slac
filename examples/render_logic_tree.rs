@@ -1,8 +1,6 @@
 use slac::calculate::{AtomRegistry, DumpTerm};
 use slac::sla::*;
 
-use std::sync::Arc;
-
 fn main() {
     macro_rules! ec2_infra {
         ($name: ident) => {
