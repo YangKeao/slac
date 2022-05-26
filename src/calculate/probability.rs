@@ -90,7 +90,7 @@ impl Term {
                 // TODO: optimize the performance
                 let mut sum = 0f64;
                 for ele in unions.into_iter().powerset() {
-                    if ele.len() == 0 {
+                    if ele.is_empty() {
                         continue;
                     }
 
@@ -110,12 +110,11 @@ impl Term {
                 if let Some(result) = self.calc_minimum_unit() {
                     return result;
                 }
-                println!("failed to calculate direct {:?}", self);
 
                 if let Term::Intersect(intersects) = self {
                     // According to De Morgan's laws
                     for ele in intersects.into_iter().powerset() {
-                        if ele.len() == 0 {
+                        if ele.is_empty() {
                             continue;
                         }
 
@@ -145,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_calc() {
-        let mut registry = AtomRegistry::new();
+        let mut registry = AtomRegistry::default();
 
         let prob_a = 0.5;
         let prob_b = 0.9;
@@ -156,11 +155,10 @@ mod tests {
         let union = Term::Union(vec![Term::Atom(atom_a.clone()), Term::Atom(atom_b.clone())]);
         assert_eq!(union.calc(), prob_a + prob_b - prob_a * prob_b);
 
-        let intersect =
-            Term::Intersect(vec![Term::Atom(atom_a.clone()), Term::Atom(atom_b.clone())]);
+        let intersect = Term::Intersect(vec![Term::Atom(atom_a), Term::Atom(atom_b)]);
         assert_eq!(intersect.calc(), prob_a * prob_b);
 
-        let intersect_of_union = Term::Intersect(vec![union.clone(), union.clone()]);
+        let intersect_of_union = Term::Intersect(vec![union.clone(), union]);
         assert_eq!(intersect_of_union.calc(), prob_a + prob_b - prob_a * prob_b);
     }
 }

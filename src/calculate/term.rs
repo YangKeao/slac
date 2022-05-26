@@ -50,28 +50,20 @@ pub enum Term {
 
 impl Term {
     pub fn is_none(&self) -> bool {
-        match self {
-            Term::None => true,
-            _ => false,
-        }
+        matches!(self, Term::None)
     }
 }
 
+#[derive(Default)]
 pub struct AtomRegistry {
     registry: HashMap<String, Arc<Atom>>,
 }
 
 impl AtomRegistry {
-    pub fn new() -> Self {
-        Self {
-            registry: HashMap::new(),
-        }
-    }
-
     pub fn new_atom(&mut self, name: String, probability: f64) -> Arc<Atom> {
         self.registry
             .entry(name.clone())
-            .or_insert(Arc::new(Atom { name, probability }))
+            .or_insert_with(|| Arc::new(Atom { name, probability }))
             .clone()
     }
 }

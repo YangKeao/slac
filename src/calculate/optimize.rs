@@ -19,20 +19,16 @@ impl Term {
     pub fn remove_none(self) -> Option<Term> {
         match self {
             Term::None => None,
-            Term::Atom(atom) => Some(Term::Atom(atom.clone())),
-            Term::Not(term) => {
-                if let Some(subterm) = term.remove_none() {
-                    Some(Term::Not(Box::new(subterm)))
-                } else {
-                    None
-                }
-            }
+            Term::Atom(atom) => Some(Term::Atom(atom)),
+            Term::Not(term) => term
+                .remove_none()
+                .map(|subterm| Term::Not(Box::new(subterm))),
             Term::Union(unions) => {
                 let non_empty_unions: Vec<Term> = unions
                     .into_iter()
                     .filter_map(|term| term.remove_none())
                     .collect();
-                if non_empty_unions.len() == 0 {
+                if non_empty_unions.is_empty() {
                     None
                 } else {
                     Some(Term::Union(non_empty_unions))
@@ -43,7 +39,7 @@ impl Term {
                     .into_iter()
                     .filter_map(|term| term.remove_none())
                     .collect();
-                if non_empty_intersects.len() == 0 {
+                if non_empty_intersects.is_empty() {
                     None
                 } else {
                     Some(Term::Intersect(non_empty_intersects))
@@ -59,10 +55,10 @@ impl Term {
     pub fn flat(self) -> Term {
         match self {
             Term::None => Term::None,
-            Term::Atom(atom) => Term::Atom(atom.clone()),
+            Term::Atom(atom) => Term::Atom(atom),
             Term::Not(term) => Term::Not(Box::new(term.flat())),
             Term::Union(unions) => {
-                assert!(unions.len() > 0);
+                assert!(!unions.is_empty());
 
                 if unions.len() == 1 {
                     unions.into_iter().next().unwrap().flat()
@@ -80,7 +76,7 @@ impl Term {
                 }
             }
             Term::Intersect(intersects) => {
-                assert!(intersects.len() > 0);
+                assert!(!intersects.is_empty());
 
                 if intersects.len() == 1 {
                     intersects.into_iter().next().unwrap().flat()
@@ -111,23 +107,19 @@ impl Term {
                     Term::Not(subterm) => subterm.not_push_down(),
                     Term::Intersect(intersects) => {
                         // according to De Morgan's laws
-                        let mut unions: Vec<Term> = Vec::new();
-                        for item in intersects.into_iter() {
-                            let not_item = Term::Not(Box::new(item));
-                            let not_item = not_item.not_push_down();
-                            unions.push(not_item);
-                        }
+                        let unions: Vec<Term> = intersects
+                            .into_iter()
+                            .map(|item| Term::Not(Box::new(item)).not_push_down())
+                            .collect();
 
                         Term::Union(unions)
                     }
                     Term::Union(unions) => {
                         // according to De Morgan's laws
-                        let mut intersects: Vec<Term> = Vec::new();
-                        for item in unions.into_iter() {
-                            let not_item = Term::Not(Box::new(item));
-                            let not_item = not_item.not_push_down();
-                            intersects.push(not_item);
-                        }
+                        let intersects: Vec<Term> = unions
+                            .into_iter()
+                            .map(|item| Term::Not(Box::new(item)).not_push_down())
+                            .collect();
 
                         Term::Intersect(intersects)
                     }

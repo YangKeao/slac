@@ -51,7 +51,7 @@ fn main() {
         Dependency::Service(svc_b),
     ]);
 
-    let mut atom_registry = AtomRegistry::new();
+    let mut atom_registry = AtomRegistry::default();
     let term = svc_f.dump_term(&mut atom_registry);
     let term_without_none = term.clone().remove_none().unwrap();
 
