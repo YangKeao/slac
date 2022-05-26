@@ -55,7 +55,7 @@ fn main() {
 
     let mut atom_registry = AtomRegistry::new();
     let term = svc_f.dump_term(&mut atom_registry);
-    let term_without_none = term.remove_none().unwrap();
+    let term_without_none = term.clone().remove_none().unwrap();
 
     let mut f = std::fs::File::create("logic_tree.dot").unwrap();
     dot::render(&term, &mut f).unwrap();

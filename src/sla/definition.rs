@@ -117,3 +117,83 @@ impl DumpTerm for Group {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use float_cmp::approx_eq;
+    use rand::Rng;
+
+    use crate::{calculate::{Atom, AtomRegistry, DumpTerm}, sla::*};
+
+    #[test]
+    fn test_calc() {
+        fn test_calc_impl(infra_sla: f64, connection_sla: f64) -> f64 {
+            macro_rules! ec2_infra {
+                ($name: ident) => {
+                    let $name = Service::known_sla(stringify!($name), infra_sla);
+                };
+            }
+        
+            macro_rules! aws_connection {
+                ($name: ident) => {
+                    let $name = Service::known_sla(stringify!($name), connection_sla);
+                };
+            }
+        
+            ec2_infra!(infra_a);
+            ec2_infra!(infra_b);
+            ec2_infra!(infra_c);
+            ec2_infra!(infra_d);
+            ec2_infra!(infra_e);
+        
+            aws_connection!(connection_a);
+            aws_connection!(connection_b);
+            aws_connection!(connection_c);
+            aws_connection!(connection_d);
+        
+            let svc_c = Service::dependencies(vec![Dependency::Service(infra_b)]);
+        
+            let svc_d = Service::dependencies(vec![Dependency::Service(infra_c.clone())]);
+            let svc_e = Service::dependencies(vec![Dependency::Service(infra_c.clone())]);
+            let svc_b = Service::dependencies(vec![Dependency::Service(infra_c)]);
+        
+            let svc_g = Service::dependencies(vec![Dependency::Service(infra_e)]);
+        
+            let group_a = Group::new(vec![svc_d, svc_e, svc_c.clone(), svc_g], 2);
+        
+            let svc_a = Service::dependencies(vec![
+                Dependency::Service(infra_a),
+                Dependency::Service(connection_a),
+                Dependency::Group(group_a),
+                Dependency::Service(connection_b),
+                Dependency::Service(svc_c),
+            ]);
+        
+            let svc_f = Service::dependencies(vec![
+                Dependency::Service(infra_d),
+                Dependency::Service(connection_c),
+                Dependency::Service(svc_a),
+                Dependency::Service(connection_d),
+                Dependency::Service(svc_b),
+            ]);
+        
+            let mut atom_registry = AtomRegistry::new();
+            let term = svc_f.dump_term(&mut atom_registry);
+
+            term.calc()
+        }
+        fn test_calc_expected(infra_sla: f64, connection_sla: f64) -> f64 {
+            1f64 - infra_sla.powi(4) * connection_sla.powi(4)
+        }
+
+        let mut rng = rand::thread_rng();
+        for _ in 0..100 {
+            let infra_sla = rng.gen();
+            let connection_sla = rng.gen();
+
+            let expected = test_calc_expected(infra_sla, connection_sla);
+            let got = test_calc_impl(infra_sla, connection_sla);
+            assert!(approx_eq!(f64, expected, got, epsilon = 0.0000001f64))
+        }
+    }
+}
