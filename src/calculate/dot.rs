@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-use super::Term;
+use super::{MultiOp, Term, UnaryOp};
 
 use std::borrow::Cow;
 
@@ -51,19 +51,31 @@ impl Term {
                 content: "None".to_string(),
                 id,
             },
-            Term::Atom(atom) => TermNode {
+            Term::Unary {
+                atom,
+                op: UnaryOp::None,
+            } => TermNode {
                 content: atom.name().to_string(),
                 id,
             },
-            Term::Not(_) => TermNode {
+            Term::Unary {
+                atom,
+                op: UnaryOp::Not,
+            } => TermNode {
                 content: "Not".to_string(),
                 id,
             },
-            Term::Union(_) => TermNode {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Union,
+            } => TermNode {
                 content: "Union".to_string(),
                 id,
             },
-            Term::Intersect(_) => TermNode {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Intersect,
+            } => TermNode {
                 content: "Intersect".to_string(),
                 id,
             },
@@ -80,22 +92,34 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term {
             Term::None => {
                 nodes.push(self.node());
             }
-            Term::Atom(_) => {
+            Term::Unary {
+                atom,
+                op: UnaryOp::None,
+            } => {
                 nodes.push(self.node());
             }
-            Term::Not(term) => {
+            Term::Unary {
+                atom,
+                op: UnaryOp::Not,
+            } => {
                 nodes.push(self.node());
-                nodes.extend(term.nodes().into_owned());
+                nodes.push(Term::atom(atom.clone()).node());
             }
-            Term::Union(unions) => {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Union,
+            } => {
                 nodes.push(self.node());
-                for union in unions.iter().map(|item| item.nodes().into_owned()) {
+                for union in terms.iter().map(|item| item.nodes().into_owned()) {
                     nodes.extend(union);
                 }
             }
-            Term::Intersect(intersects) => {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Intersect,
+            } => {
                 nodes.push(self.node());
-                for intersect in intersects.iter().map(|item| item.nodes().into_owned()) {
+                for intersect in terms.iter().map(|item| item.nodes().into_owned()) {
                     nodes.extend(intersect);
                 }
             }
@@ -109,20 +133,29 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term {
 
         match self {
             Term::None => {}
-            Term::Atom(_) => {}
-            Term::Not(term) => {
+            Term::Unary {
+                atom: _,
+                op: UnaryOp::None,
+            } => {}
+            Term::Unary {
+                atom,
+                op: UnaryOp::Not,
+            } => {
                 let from = self.node();
+                let to = Term::atom(atom.clone()).node();
 
                 edges.push(TermEdge {
                     source: from,
-                    target: term.node(),
+                    target: to,
                 });
-                edges.extend(term.edges().into_owned());
             }
-            Term::Union(unions) => {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Union,
+            } => {
                 let from = self.node();
 
-                for union in unions.iter() {
+                for union in terms.iter() {
                     edges.push(TermEdge {
                         source: from.clone(),
                         target: union.node(),
@@ -130,10 +163,13 @@ impl<'a> dot::GraphWalk<'a, TermNode, TermEdge> for Term {
                     edges.extend(union.edges().into_owned());
                 }
             }
-            Term::Intersect(intersects) => {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Intersect,
+            } => {
                 let from = self.node();
 
-                for intersect in intersects.iter() {
+                for intersect in terms.iter() {
                     edges.push(TermEdge {
                         source: from.clone(),
                         target: intersect.node().clone(),

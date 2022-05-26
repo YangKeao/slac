@@ -15,81 +15,93 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::calculate::Atom;
+use crate::calculate::{Atom, MultiOp, UnaryOp};
 
 use super::Term;
 
 use itertools::Itertools;
 
-impl Term {
+trait CalcMinimumUnit {
+    fn calc_minimum_unit(&self) -> Option<f64>;
+}
+
+impl CalcMinimumUnit for Vec<Term> {
     // if every term in an intersection is an atom or a not atom
     // this function will calculate the probability of it directly
     // with the assumption that all of them are independent
     // or this function will return a None
     fn calc_minimum_unit(&self) -> Option<f64> {
-        match self {
-            Term::Intersect(intersects) => {
-                // first, we look for conflict requirements
-                let mut sign: BTreeMap<&str, (bool, Arc<Atom>)> = BTreeMap::new();
-                for item in intersects {
-                    match item {
-                        Term::Not(not) => {
-                            if let Term::Atom(atom) = not.as_ref() {
-                                if let Some((sign, _)) = sign.get(&atom.name()) {
-                                    if *sign {
-                                        // conflict, return 0
-                                        return Some(0.0);
-                                    }
-                                } else {
-                                    sign.insert(atom.name(), (false, atom.clone()));
-                                }
-                            } else {
-                                return None;
-                            }
+        // first, we look for conflict requirements
+        let mut sign: BTreeMap<&str, (bool, Arc<Atom>)> = BTreeMap::new();
+        for item in self {
+            match item {
+                Term::Unary {
+                    atom,
+                    op: UnaryOp::Not,
+                } => {
+                    if let Some((sign, _)) = sign.get(&atom.name()) {
+                        if *sign {
+                            // conflict, return 0
+                            return Some(0.0);
                         }
-                        Term::Atom(atom) => {
-                            if let Some((sign, _)) = sign.get(atom.name()) {
-                                if !*sign {
-                                    // conflict, return 0
-                                    return Some(0.0);
-                                }
-                            } else {
-                                sign.insert(atom.name(), (true, atom.clone()));
-                            }
-                        }
-                        _ => return None,
-                    }
-                }
-
-                // then, we calculate the probability
-                let mut product = 1f64;
-                for (_, (sign, atom)) in sign.iter() {
-                    if *sign {
-                        product *= atom.probability();
                     } else {
-                        product *= 1.0 - atom.probability();
+                        sign.insert(atom.name(), (false, atom.clone()));
                     }
                 }
-                Some(product)
+                Term::Unary {
+                    atom,
+                    op: UnaryOp::None,
+                } => {
+                    if let Some((sign, _)) = sign.get(atom.name()) {
+                        if !*sign {
+                            // conflict, return 0
+                            return Some(0.0);
+                        }
+                    } else {
+                        sign.insert(atom.name(), (true, atom.clone()));
+                    }
+                }
+                _ => return None,
             }
-            _ => unreachable!(),
         }
-    }
 
+        // then, we calculate the probability
+        let mut product = 1f64;
+        for (_, (sign, atom)) in sign.iter() {
+            if *sign {
+                product *= atom.probability();
+            } else {
+                product *= 1.0 - atom.probability();
+            }
+        }
+        Some(product)
+    }
+}
+
+impl Term {
     pub fn calc(&self) -> f64 {
-        self.clone().not_push_down().flat().inner_calc()
+        self.clone().flat().inner_calc()
     }
 
     // inner_calc receives a flat term without none and returns a probability
     fn inner_calc(self) -> f64 {
         match self {
             Term::None => unreachable!(),
-            Term::Atom(atom) => atom.probability(),
-            Term::Not(subterm) => 1.0 - subterm.inner_calc(),
-            Term::Union(unions) => {
+            Term::Unary {
+                atom,
+                op: UnaryOp::None,
+            } => atom.probability(),
+            Term::Unary {
+                atom,
+                op: UnaryOp::Not,
+            } => 1.0 - atom.probability(),
+            Term::Multiple {
+                terms,
+                op: MultiOp::Union,
+            } => {
                 // TODO: optimize the performance
                 let mut sum = 0f64;
-                for ele in unions.into_iter().powerset() {
+                for ele in terms.into_iter().powerset() {
                     if ele.is_empty() {
                         continue;
                     }
@@ -97,42 +109,45 @@ impl Term {
                     let sign = if ele.len() % 2 == 1 { 1f64 } else { -1f64 };
 
                     let intersects: Vec<Term> = ele;
-                    let intersect = Term::Intersect(intersects).flat();
+                    let intersect = Term::intersect(intersects).flat();
                     // complicated situation could cause stack overflow
                     sum += sign * intersect.inner_calc();
                 }
                 sum
             }
-            Term::Intersect(_) => {
+            Term::Multiple {
+                terms,
+                op: MultiOp::Intersect,
+            } => {
                 // TODO: optimize the performance
                 let mut sum = 1f64;
 
-                if let Some(result) = self.calc_minimum_unit() {
+                if let Some(result) = terms.calc_minimum_unit() {
                     return result;
                 }
 
-                if let Term::Intersect(intersects) = self {
-                    // According to De Morgan's laws
-                    for ele in intersects.into_iter().powerset() {
-                        if ele.is_empty() {
-                            continue;
-                        }
-
-                        let sign = if ele.len() % 2 == 1 { -1f64 } else { 1f64 };
-
-                        let intersects: Vec<Term> = ele
-                            .into_iter()
-                            .map(|item| Term::Not(Box::new(item)))
-                            .collect();
-
-                        let intersects = Term::Intersect(intersects).not_push_down().flat();
-                        sum += sign * intersects.inner_calc();
+                // According to De Morgan's laws
+                for ele in terms.into_iter().powerset() {
+                    if ele.is_empty() {
+                        continue;
                     }
 
-                    sum
-                } else {
-                    unreachable!()
+                    let sign = if ele.len() % 2 == 1 { -1f64 } else { 1f64 };
+
+                    let intersects: Term = Term::intersect(
+                        ele.into_iter()
+                            .map(|mut item| {
+                                item.not();
+                                item
+                            })
+                            .collect(),
+                    );
+
+                    let intersects = intersects.flat();
+                    sum += sign * intersects.inner_calc();
                 }
+
+                sum
             }
         }
     }
@@ -152,13 +167,13 @@ mod tests {
         let atom_a = registry.new_atom("atom_a".to_owned(), prob_a);
         let atom_b = registry.new_atom("atom_b".to_owned(), prob_b);
 
-        let union = Term::Union(vec![Term::Atom(atom_a.clone()), Term::Atom(atom_b.clone())]);
+        let union = Term::union(vec![Term::atom(atom_a.clone()), Term::atom(atom_b.clone())]);
         assert_eq!(union.calc(), prob_a + prob_b - prob_a * prob_b);
 
-        let intersect = Term::Intersect(vec![Term::Atom(atom_a), Term::Atom(atom_b)]);
+        let intersect = Term::intersect(vec![Term::atom(atom_a), Term::atom(atom_b)]);
         assert_eq!(intersect.calc(), prob_a * prob_b);
 
-        let intersect_of_union = Term::Intersect(vec![union.clone(), union]);
+        let intersect_of_union = Term::intersect(vec![union.clone(), union]);
         assert_eq!(intersect_of_union.calc(), prob_a + prob_b - prob_a * prob_b);
     }
 }

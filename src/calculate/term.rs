@@ -33,24 +33,53 @@ impl Atom {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum UnaryOp {
+    Not,
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum MultiOp {
+    Union,
+    Intersect,
+}
+
 #[derive(Debug, Clone)]
 pub enum Term {
     // none is a special case that represents the empty set
     // anything calculate with none results in itself
     None,
 
-    // one atom could be shared by multiple transforming terms
-    Atom(Arc<Atom>),
+    Unary { atom: Arc<Atom>, op: UnaryOp },
 
-    Not(Box<Term>),
-
-    Union(Vec<Term>),
-    Intersect(Vec<Term>),
+    Multiple { terms: Vec<Term>, op: MultiOp },
 }
 
 impl Term {
     pub fn is_none(&self) -> bool {
         matches!(self, Term::None)
+    }
+
+    pub fn intersect(terms: Vec<Term>) -> Self {
+        Self::Multiple {
+            terms,
+            op: MultiOp::Intersect,
+        }
+    }
+
+    pub fn union(terms: Vec<Term>) -> Self {
+        Self::Multiple {
+            terms,
+            op: MultiOp::Union,
+        }
+    }
+
+    pub fn atom(atom: Arc<Atom>) -> Self {
+        Self::Unary {
+            atom,
+            op: UnaryOp::None,
+        }
     }
 }
 

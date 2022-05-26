@@ -13,36 +13,27 @@
 // limitations under the License.
 //
 
-use super::Term;
+use std::ops::Mul;
+
+use super::{MultiOp, Term, UnaryOp};
 
 impl Term {
     pub fn remove_none(self) -> Option<Term> {
         match self {
             Term::None => None,
-            Term::Atom(atom) => Some(Term::Atom(atom)),
-            Term::Not(term) => term
-                .remove_none()
-                .map(|subterm| Term::Not(Box::new(subterm))),
-            Term::Union(unions) => {
-                let non_empty_unions: Vec<Term> = unions
+            Term::Unary { atom, op } => Some(Term::Unary { atom, op }),
+            Term::Multiple { terms, op } => {
+                let non_empty_terms: Vec<Term> = terms
                     .into_iter()
                     .filter_map(|term| term.remove_none())
                     .collect();
-                if non_empty_unions.is_empty() {
+                if non_empty_terms.is_empty() {
                     None
                 } else {
-                    Some(Term::Union(non_empty_unions))
-                }
-            }
-            Term::Intersect(intersects) => {
-                let non_empty_intersects: Vec<Term> = intersects
-                    .into_iter()
-                    .filter_map(|term| term.remove_none())
-                    .collect();
-                if non_empty_intersects.is_empty() {
-                    None
-                } else {
-                    Some(Term::Intersect(non_empty_intersects))
+                    Some(Term::Multiple {
+                        terms: non_empty_terms,
+                        op,
+                    })
                 }
             }
         }
@@ -55,88 +46,63 @@ impl Term {
     pub fn flat(self) -> Term {
         match self {
             Term::None => Term::None,
-            Term::Atom(atom) => Term::Atom(atom),
-            Term::Not(term) => Term::Not(Box::new(term.flat())),
-            Term::Union(unions) => {
-                assert!(!unions.is_empty());
+            Term::Unary { atom, op } => Term::Unary { atom, op },
+            Term::Multiple { terms, op } => {
+                assert!(!terms.is_empty());
 
-                if unions.len() == 1 {
-                    unions.into_iter().next().unwrap().flat()
+                if terms.len() == 1 {
+                    terms.into_iter().next().unwrap().flat()
                 } else {
-                    let mut flat_union: Vec<Term> = Vec::new();
-                    for item in unions.into_iter() {
-                        let flat_child = item.flat();
-                        match flat_child {
-                            Term::Union(union) => flat_union.extend(union),
-                            _ => flat_union.push(flat_child),
+                    let mut flated = Vec::new();
+                    for item in terms.into_iter() {
+                        let flated_child = item.flat();
+                        match flated_child {
+                            Term::Multiple { terms: child_terms, op: child_op } => {
+                                if child_op == op {
+                                    flated.extend(child_terms)
+                                } else {
+                                    flated.push(Term::Multiple {
+                                        terms: child_terms,
+                                        op: child_op
+                                    })
+                                }
+                            }
+                            _ => flated.push(flated_child),
                         }
                     }
-
-                    Term::Union(flat_union)
-                }
-            }
-            Term::Intersect(intersects) => {
-                assert!(!intersects.is_empty());
-
-                if intersects.len() == 1 {
-                    intersects.into_iter().next().unwrap().flat()
-                } else {
-                    let mut flat_intersect: Vec<Term> = Vec::new();
-                    for item in intersects.into_iter() {
-                        let flat_child = item.flat();
-                        match flat_child {
-                            Term::Intersect(union) => flat_intersect.extend(union),
-                            _ => flat_intersect.push(flat_child),
-                        }
+                    Term::Multiple {
+                        terms: flated,
+                        op,
                     }
-
-                    Term::Intersect(flat_intersect)
                 }
             }
         }
     }
 
-    pub fn not_push_down(self) -> Term {
+    pub fn not(&mut self) {
         match self {
-            Term::None => Term::None,
-            Term::Atom(_) => self,
-            Term::Not(subterm) => {
-                match *subterm {
-                    Term::None => Term::None,
-                    Term::Atom(atom) => Term::Not(Box::new(Term::Atom(atom))),
-                    Term::Not(subterm) => subterm.not_push_down(),
-                    Term::Intersect(intersects) => {
-                        // according to De Morgan's laws
-                        let unions: Vec<Term> = intersects
-                            .into_iter()
-                            .map(|item| Term::Not(Box::new(item)).not_push_down())
-                            .collect();
-
-                        Term::Union(unions)
-                    }
-                    Term::Union(unions) => {
-                        // according to De Morgan's laws
-                        let intersects: Vec<Term> = unions
-                            .into_iter()
-                            .map(|item| Term::Not(Box::new(item)).not_push_down())
-                            .collect();
-
-                        Term::Intersect(intersects)
-                    }
+            Term::None => {
+                unreachable!()
+            }
+            Term::Unary { atom, op } => {
+                if *op == UnaryOp::None {
+                    *op = UnaryOp::Not;
+                } else if *op == UnaryOp::Not {
+                    *op = UnaryOp::None;
                 }
             }
-            Term::Union(unions) => Term::Union(
-                unions
-                    .into_iter()
-                    .map(|item| item.not_push_down())
-                    .collect(),
-            ),
-            Term::Intersect(intersects) => Term::Intersect(
-                intersects
-                    .into_iter()
-                    .map(|item| item.not_push_down())
-                    .collect(),
-            ),
+            Term::Multiple { terms, op } => {
+                // according to De Morgan's laws
+                for term in terms.iter_mut() {
+                    term.not();
+                }
+
+                if *op == MultiOp::Intersect {
+                    *op = MultiOp::Union
+                } else if *op == MultiOp::Union {
+                    *op = MultiOp::Intersect
+                }
+            }
         }
     }
 }

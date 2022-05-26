@@ -67,7 +67,7 @@ impl Group {
 impl DumpTerm for Service {
     fn dump_term(&self, registry: &mut AtomRegistry) -> Term {
         match &self {
-            Service::KnownSLA { name, sla } => Term::Atom(registry.new_atom(name.clone(), *sla)),
+            Service::KnownSLA { name, sla } => Term::atom(registry.new_atom(name.clone(), *sla)),
             Service::Dependencies(dependencies) => {
                 let mut intersects: Vec<Term> = Vec::new();
 
@@ -81,7 +81,7 @@ impl DumpTerm for Service {
                 if intersects.is_empty() {
                     Term::None
                 } else {
-                    Term::Intersect(intersects)
+                    Term::intersect(intersects)
                 }
             }
         }
@@ -101,7 +101,7 @@ impl DumpTerm for Group {
                 }
 
                 if !intersects.is_empty() {
-                    unions.push(Term::Intersect(intersects));
+                    unions.push(Term::intersect(intersects));
                 }
             }
         }
@@ -109,7 +109,7 @@ impl DumpTerm for Group {
         if unions.is_empty() {
             Term::None
         } else {
-            Term::Union(unions)
+            Term::union(unions)
         }
     }
 }
