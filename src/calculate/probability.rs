@@ -32,7 +32,7 @@ impl Term {
                 // first, we look for conflict requirements
                 let mut sign: BTreeMap<&str, (bool, Arc<Atom>)> = BTreeMap::new();
                 for item in intersects {
-                    match item.as_ref() {
+                    match item {
                         Term::Not(not) => {
                             if let Term::Atom(atom) = not.as_ref() {
                                 if let Some((sign, _)) = sign.get(&atom.name()) {
@@ -96,7 +96,7 @@ impl Term {
 
                     let sign = if ele.len() % 2 == 1 { 1f64 } else { -1f64 };
 
-                    let intersects: Vec<Box<Term>> = ele;
+                    let intersects: Vec<Term> = ele;
                     let intersect = Term::Intersect(intersects).flat();
                     // complicated situation could cause stack overflow
                     sum += sign * intersect.inner_calc();
@@ -121,9 +121,9 @@ impl Term {
 
                         let sign = if ele.len() % 2 == 1 { -1f64 } else { 1f64 };
 
-                        let intersects: Vec<Box<Term>> = ele
+                        let intersects: Vec<Term> = ele
                             .into_iter()
-                            .map(|item| Box::new(Term::Not(item)))
+                            .map(|item| Term::Not(Box::new(item)))
                             .collect();
 
                         let intersect = Term::Intersect(intersects).not_push_down().flat();

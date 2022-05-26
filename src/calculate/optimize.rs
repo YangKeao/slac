@@ -28,10 +28,9 @@ impl Term {
                 }
             }
             Term::Union(unions) => {
-                let non_empty_unions: Vec<Box<Term>> = unions
+                let non_empty_unions: Vec<Term> = unions
                     .into_iter()
                     .filter_map(|term| term.remove_none())
-                    .map(|item| -> Box<Term> { Box::new(item) })
                     .collect();
                 if non_empty_unions.len() == 0 {
                     None
@@ -40,10 +39,9 @@ impl Term {
                 }
             }
             Term::Intersect(intersects) => {
-                let non_empty_intersects: Vec<Box<Term>> = intersects
+                let non_empty_intersects: Vec<Term> = intersects
                     .into_iter()
                     .filter_map(|term| term.remove_none())
-                    .map(|item| -> Box<Term> { Box::new(item) })
                     .collect();
                 if non_empty_intersects.len() == 0 {
                     None
@@ -69,12 +67,12 @@ impl Term {
                 if unions.len() == 1 {
                     unions.into_iter().next().unwrap().flat()
                 } else {
-                    let mut flat_union: Vec<Box<Term>> = Vec::new();
+                    let mut flat_union: Vec<Term> = Vec::new();
                     for item in unions.into_iter() {
                         let flat_child = item.flat();
                         match flat_child {
                             Term::Union(union) => flat_union.extend(union),
-                            _ => flat_union.push(Box::new(flat_child)),
+                            _ => flat_union.push(flat_child),
                         }
                     }
 
@@ -87,12 +85,12 @@ impl Term {
                 if intersects.len() == 1 {
                     intersects.into_iter().next().unwrap().flat()
                 } else {
-                    let mut flat_intersect: Vec<Box<Term>> = Vec::new();
+                    let mut flat_intersect: Vec<Term> = Vec::new();
                     for item in intersects.into_iter() {
                         let flat_child = item.flat();
                         match flat_child {
                             Term::Intersect(union) => flat_intersect.extend(union),
-                            _ => flat_intersect.push(Box::new(flat_child)),
+                            _ => flat_intersect.push(flat_child),
                         }
                     }
 
@@ -105,7 +103,7 @@ impl Term {
     pub fn not_push_down(self) -> Term {
         match self {
             Term::None => Term::None,
-            Term::Atom(atom) => Term::Atom(atom.clone()),
+            Term::Atom(_) => self,
             Term::Not(subterm) => {
                 match *subterm {
                     Term::None => Term::None,
@@ -113,22 +111,22 @@ impl Term {
                     Term::Not(subterm) => subterm.not_push_down(),
                     Term::Intersect(intersects) => {
                         // according to De Morgan's laws
-                        let mut unions: Vec<Box<Term>> = Vec::new();
-                        for item in intersects.iter() {
-                            let not_item = Term::Not(item.clone());
+                        let mut unions: Vec<Term> = Vec::new();
+                        for item in intersects.into_iter() {
+                            let not_item = Term::Not(Box::new(item));
                             let not_item = not_item.not_push_down();
-                            unions.push(Box::new(not_item));
+                            unions.push(not_item);
                         }
 
                         Term::Union(unions)
                     }
                     Term::Union(unions) => {
                         // according to De Morgan's laws
-                        let mut intersects: Vec<Box<Term>> = Vec::new();
-                        for item in unions.iter() {
-                            let not_item = Term::Not(item.clone());
+                        let mut intersects: Vec<Term> = Vec::new();
+                        for item in unions.into_iter() {
+                            let not_item = Term::Not(Box::new(item));
                             let not_item = not_item.not_push_down();
-                            intersects.push(Box::new(not_item));
+                            intersects.push(not_item);
                         }
 
                         Term::Intersect(intersects)
@@ -138,13 +136,13 @@ impl Term {
             Term::Union(unions) => Term::Union(
                 unions
                     .into_iter()
-                    .map(|item| Box::new(item.not_push_down()))
+                    .map(|item| item.not_push_down())
                     .collect(),
             ),
             Term::Intersect(intersects) => Term::Intersect(
                 intersects
                     .into_iter()
-                    .map(|item| Box::new(item.not_push_down()))
+                    .map(|item| item.not_push_down())
                     .collect(),
             ),
         }

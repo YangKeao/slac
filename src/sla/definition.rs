@@ -69,15 +69,15 @@ impl DumpTerm for Service {
         match &self {
             Service::KnownSLA { name, sla } => Term::Atom(registry.new_atom(name.clone(), *sla)),
             Service::Dependencies(dependencies) => {
-                let mut intersects: Vec<Box<Term>> = Vec::new();
+                let mut intersects: Vec<Term> = Vec::new();
 
                 for dep in dependencies {
                     match dep {
                         Dependency::Service(svc) => {
-                            intersects.push(Box::new(svc.dump_term(registry)))
+                            intersects.push(svc.dump_term(registry))
                         }
                         Dependency::Group(group) => {
-                            intersects.push(Box::new(group.dump_term(registry)))
+                            intersects.push(group.dump_term(registry))
                         }
                     }
                 }
@@ -94,18 +94,18 @@ impl DumpTerm for Service {
 
 impl DumpTerm for Group {
     fn dump_term(&self, registry: &mut AtomRegistry) -> Term {
-        let mut unions: Vec<Box<Term>> = Vec::new();
+        let mut unions: Vec<Term> = Vec::new();
 
         let total = self.dependencies.len();
         for success_count in self.quorum..total {
             for svcs in self.dependencies.iter().combinations(success_count) {
-                let mut intersects: Vec<Box<Term>> = Vec::new();
+                let mut intersects: Vec<Term> = Vec::new();
                 for svc in svcs {
-                    intersects.push(Box::new(svc.dump_term(registry)));
+                    intersects.push(svc.dump_term(registry));
                 }
 
                 if intersects.len() != 0 {
-                    unions.push(Box::new(Term::Intersect(intersects)));
+                    unions.push(Term::Intersect(intersects));
                 }
             }
         }

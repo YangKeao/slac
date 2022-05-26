@@ -44,8 +44,8 @@ pub enum Term {
 
     Not(Box<Term>),
 
-    Union(Vec<Box<Term>>),
-    Intersect(Vec<Box<Term>>),
+    Union(Vec<Term>),
+    Intersect(Vec<Term>),
 }
 
 impl Term {
