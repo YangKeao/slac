@@ -42,6 +42,13 @@ impl Term {
     // 2. The operand of intersect is not intersect
     // 3. The number of operand of union or intersect is more than 1
     pub fn flat(self) -> Term {
+        // TODO: use a more suitable datastructure
+        // flat can also be implemented on a mutable reference but need some
+        // special data structures. If we put all Term in a compact linear
+        // memory space, the flat can be implemented without overhead.
+
+        // actually we don't need a aligned indexable data structure (as `Vec`),
+        // as we are always iterating through it (but not index directly).
         match self {
             Term::None => Term::None,
             Term::Unary { atom, op } => Term::Unary { atom, op },
@@ -78,6 +85,9 @@ impl Term {
     }
 
     pub fn not(&mut self) {
+        // not receives a mutable reference, rather than a ownership
+        // because it could be implemented without any allocation / deallocation
+        // it's much faster than the somehow immutable implementation
         match self {
             Term::None => {
                 unreachable!()

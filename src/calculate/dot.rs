@@ -66,14 +66,14 @@ impl Term {
                 id,
             },
             Term::Multiple {
-                terms:_,
+                terms: _,
                 op: MultiOp::Union,
             } => TermNode {
                 content: "Union".to_string(),
                 id,
             },
             Term::Multiple {
-                terms:_,
+                terms: _,
                 op: MultiOp::Intersect,
             } => TermNode {
                 content: "Intersect".to_string(),
